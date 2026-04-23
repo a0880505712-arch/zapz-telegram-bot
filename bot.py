@@ -48,8 +48,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👋 สวัสดีครับ! ผมคือบอทวิเคราะห์คอนเทนต์\n\n"
         "📌 วิธีใช้งาน:\n"
         "• ส่งข้อความที่ต้องการวิเคราะห์มาได้เลย\n"
-        "• หรือใช้คำสั่ง /analyze [ข้อความ]\n"
-        "• /recent - วิเคราะห์ข้อความล่าสุดในกลุ่ม\n\n"
+        "• หรือใช้คำสั่ง /analyze [ข้อความ]\n\n"
         "🚀 พร้อมวิเคราะห์และสร้างพาดหัวแอด Facebook ให้ทันที!"
     )
 
@@ -65,16 +64,17 @@ async def analyze_text(text: str) -> str:
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ตรวจสอบว่ามาจากกลุ่มที่กำหนดหรือไม่
+    if not update.message or not update.message.text:
+        return
+
     chat_id = str(update.effective_chat.id)
-    if CHAT_ID and chat_id != CHAT_ID:
+    if CHAT_ID and chat_id != CHAT_ID and update.effective_chat.type != "private":
         return
 
     text = update.message.text
-    if not text or text.startswith("/"):
+    if text.startswith("/"):
         return
 
-    # แสดงสถานะกำลังพิมพ์
     await context.bot.send_chat_action(
         chat_id=update.effective_chat.id, action="typing"
     )
@@ -88,7 +88,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def analyze_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("❗ กรุณาระบุข้อความ เช่น: /analyze ข้อความที่ต้องการวิเคราะห์")
+        await update.message.reply_text(
+            "❗ กรุณาระบุข้อความ เช่น:\n/analyze ข้อความที่ต้องการวิเคราะห์"
+        )
         return
 
     text = " ".join(context.args)
@@ -103,23 +105,13 @@ async def analyze_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ เกิดข้อผิดพลาด: {str(e)}")
 
 
-async def recent_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "📨 ส่งข้อความที่ต้องการวิเคราะห์มาได้เลยครับ\n"
-        "หรือ forward ข้อความจากกลุ่มมาหาผมโดยตรง"
-    )
-
-
 def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("analyze", analyze_command))
-    app.add_handler(CommandHandler("recent", recent_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
     print("🤖 Bot is running...")
-    app.run_polling(drop_pending_updates=True)
+    app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 
 if __name__ == "__main__":
